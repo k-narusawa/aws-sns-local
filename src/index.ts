@@ -70,19 +70,7 @@ const server = async (): Promise<Server> => {
           MessageDeduplicationId: req.body.MessageDeduplicationId,
           MessageGroupId: req.body.MessageGroupId
         };
-        return res.send(
-          builder.buildObject(
-            publish(
-              publishInput.TopicArn,
-              publishInput.Subject,
-              publishInput.Message,
-              publishInput.PhoneNumber,
-              publishInput.MessageStructure,
-              publishInput.MessageAttributes,
-              publishInput.MessageGroupId
-            )
-          )
-        );
+        return res.send(builder.buildObject(publish(publishInput)));
       default:
         throw new Error();
     }
@@ -136,22 +124,14 @@ const createTopic = (createTopicInput: CreateTopicInput) => {
   };
 };
 
-const publish = (
-  topicArn: string | undefined,
-  subject: string | undefined,
-  message: string,
-  phoneNumber: string | undefined,
-  messageStructure: string | undefined,
-  messageAttributes: MessageAttributeMap | undefined,
-  messageGroupId: string | undefined
-) => {
+const publish = (publishInput: PublishInput) => {
   const messageId = randomUUID();
-  if (phoneNumber) {
+  if (publishInput.PhoneNumber) {
     sms.push({
       messageId: messageId,
-      messageGroupId: messageGroupId,
-      destination: phoneNumber,
-      message: message,
+      messageGroupId: publishInput.MessageGroupId,
+      destination: publishInput.PhoneNumber,
+      message: publishInput.Message,
       at: Math.floor(new Date().getTime() / 1000)
     });
   } else {
