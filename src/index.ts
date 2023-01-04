@@ -7,10 +7,13 @@ import {
   PublishInput,
   MessageAttributeMap,
   CreateTopicInput,
-  ListTopicsInput
+  ListTopicsInput,
+  SubscribeInput,
+  Subscription
 } from 'aws-sdk/clients/sns';
 import { randomUUID } from 'crypto';
-import { sms, topicList } from './store';
+import _find from 'lodash.find';
+import { sms, subscriptions, topicList } from './store';
 import * as config from '../mock-config.json';
 
 const builder = new xml2js.Builder();
@@ -46,7 +49,19 @@ const server = async (): Promise<Server> => {
 
   app.post('/clear-topics', (req, res) => {
     topicList.splice(0);
-    res.status(200).send({ message: 'Sms cleared' });
+    res.status(200).send({ message: 'Topics cleared' });
+  });
+
+  app.get('/subscriptions', (req, res) => {
+    if (!req.query.since) {
+      res.status(200).send(subscriptions);
+      return;
+    }
+  });
+
+  app.post('/clear-subscriptions', (req, res) => {
+    subscriptions.splice(0);
+    res.status(200).send({ message: 'Subscriptions cleared' });
   });
 
   app.all('/', (req, res) => {
@@ -67,7 +82,14 @@ const server = async (): Promise<Server> => {
         };
         return res.send(builder.buildObject(createTopic(createTopicInput)));
       case 'Subscribe':
-        return {};
+        const subscribeInput: SubscribeInput = {
+          TopicArn: req.body.TopicArn,
+          Protocol: req.body.Protocol,
+          Endpoint: req.body.Endpoint,
+          Attributes: req.body.Attributes,
+          ReturnSubscriptionArn: req.body.ReturnSubscriptionArn
+        };
+        return res.send(builder.buildObject(subscribe(subscribeInput)));
       case 'Unsubscribe':
         return {};
       case 'Publish':
@@ -91,6 +113,46 @@ const server = async (): Promise<Server> => {
   return new Promise((resolve) => {
     const s = app.listen(Number(config.port), () => resolve(s));
   });
+};
+
+const subscribe = (subscribeInput: SubscribeInput) => {
+  const subscriptionExist = _find(subscriptions, (o) => {
+    return (
+      o.Endpoint === subscribeInput.Endpoint &&
+      o.TopicArn === subscribeInput.TopicArn
+    );
+  });
+  const topicExist = _find(topicList, (o) => {
+    return o.TopicArn === subscribeInput.TopicArn;
+  });
+
+  if (subscriptionExist) throw new Error();
+  if (!topicExist) throw new Error();
+
+  const subscriptionArn = subscribeInput.TopicArn + ':' + randomUUID();
+  const subscription: Subscription = {
+    SubscriptionArn: subscriptionArn,
+    Owner: '', // TODO
+    Protocol: subscribeInput.Protocol,
+    Endpoint: subscribeInput.Endpoint,
+    TopicArn: subscribeInput.TopicArn
+  };
+  subscriptions.push(subscription);
+  return {
+    SubscribeResponse: {
+      $: {
+        xmlns: 'http://sns.amazonaws.com/doc/2010-03-31/'
+      },
+      SubscribeResult: [
+        {
+          SubscriptionArn: subscriptionArn
+        }
+      ],
+      ResponseMetadata: {
+        RequestId: randomUUID()
+      }
+    }
+  };
 };
 
 const listTopics = (listTopicsInput: ListTopicsInput) => {
