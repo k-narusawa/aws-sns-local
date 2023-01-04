@@ -1,1 +1,3 @@
-## standard-ts-node-app
+## AWS SNS LOCAL
+
+AWS SNS Mock on local machine

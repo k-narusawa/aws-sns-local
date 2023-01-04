@@ -1,13 +1,14 @@
 {
-  "name": "k-narusawas standard node-ts",
+  "name": "aws-sns-local",
   "version": "0.1.0",
-  "description": "k-narusawas standard node-ts",
+  "description": "AWS SNS Mock on local machine",
   "main": "dist/index.ts",
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run build && node dist/server.js",
     "build": "tsc",
+    "dev": "ts-node src/index.ts",
     "clean": "rm -rf dist",
     "format": "npx prettier --config ./.prettierrc --write src/index.ts"
   },
