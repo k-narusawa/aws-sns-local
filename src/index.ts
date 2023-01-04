@@ -25,15 +25,27 @@ const server = async (): Promise<Server> => {
 
   app.use(bodyParser.urlencoded({ extended: true }));
 
-  app.get('/store', (req, res) => {
+  app.get('/sms', (req, res) => {
     if (!req.query.since) {
       res.status(200).send(sms);
       return;
     }
   });
 
-  app.post('/clear-store', (req, res) => {
+  app.post('/clear-sms', (req, res) => {
     sms.splice(0);
+    res.status(200).send({ message: 'Sms cleared' });
+  });
+
+  app.get('/topics', (req, res) => {
+    if (!req.query.since) {
+      res.status(200).send(topicList);
+      return;
+    }
+  });
+
+  app.post('/clear-topics', (req, res) => {
+    topicList.splice(0);
     res.status(200).send({ message: 'Sms cleared' });
   });
 
