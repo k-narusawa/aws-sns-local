@@ -11,7 +11,8 @@
     "dev": "ts-node src/server.ts",
     "watch": "ts-node-dev --respawn src/server.ts",
     "clean": "rm -rf dist",
-    "format": "npx prettier --config ./.prettierrc --write src/index.ts"
+    "format": "npx prettier --config ./.prettierrc --write src/**/*.ts",
+    "format:check": "npx prettier --config ./.prettierrc --check src/**/*.ts"
   },
   "author": "k-narusawa",
   "license": "ISC",
