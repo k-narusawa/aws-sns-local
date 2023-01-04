@@ -1,5 +1,6 @@
 {
   "aws": {
+    "accountId": "accountId",
     "region": "ap-northeast-1"
   },
   "port": 8006

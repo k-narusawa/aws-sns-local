@@ -3,9 +3,14 @@ import cors from 'cors';
 import type { Server } from 'http';
 import * as xml2js from 'xml2js';
 import * as bodyParser from 'body-parser';
-import { PublishInput, MessageAttributeMap } from 'aws-sdk/clients/sns';
+import {
+  PublishInput,
+  MessageAttributeMap,
+  CreateTopicInput,
+  ListTopicsInput
+} from 'aws-sdk/clients/sns';
 import { randomUUID } from 'crypto';
-import { sms } from './store';
+import { sms, topicList } from './store';
 import * as config from '../mock-config.json';
 
 const builder = new xml2js.Builder();
@@ -37,15 +42,24 @@ const server = async (): Promise<Server> => {
       case 'ListSubscriptions':
         return {};
       case 'ListTopics':
-        return {};
+        const listTopicsInput: ListTopicsInput = {
+          NextToken: req.body.NextToken
+        };
+        return res.send(builder.buildObject(listTopics(listTopicsInput)));
       case 'CreateTopic':
-        return {};
+        const createTopicInput: CreateTopicInput = {
+          Name: req.body.Name,
+          Attributes: req.body.Attributes,
+          Tags: req.body.Tags,
+          DataProtectionPolicy: req.body.DataProtectionPolicy
+        };
+        return res.send(builder.buildObject(createTopic(createTopicInput)));
       case 'Subscribe':
         return {};
       case 'Unsubscribe':
         return {};
       case 'Publish':
-        const input: PublishInput = {
+        const publishInput: PublishInput = {
           TopicArn: req.body.TopicArn,
           TargetArn: req.body.TargetArn,
           PhoneNumber: req.body.PhoneNumber,
@@ -59,13 +73,13 @@ const server = async (): Promise<Server> => {
         return res.send(
           builder.buildObject(
             publish(
-              input.TopicArn,
-              input.Subject,
-              input.Message,
-              input.PhoneNumber,
-              input.MessageStructure,
-              input.MessageAttributes,
-              input.MessageGroupId
+              publishInput.TopicArn,
+              publishInput.Subject,
+              publishInput.Message,
+              publishInput.PhoneNumber,
+              publishInput.MessageStructure,
+              publishInput.MessageAttributes,
+              publishInput.MessageGroupId
             )
           )
         );
@@ -79,6 +93,49 @@ const server = async (): Promise<Server> => {
   });
 };
 
+const listTopics = (listTopicsInput: ListTopicsInput) => {
+  return {
+    ListTopicsResponse: {
+      $: {
+        xmlns: 'http://sns.amazonaws.com/doc/2010-03-31/'
+      },
+      ListTopicsResult: [
+        {
+          Topics: [
+            topicList.map((topic) => {
+              return { member: { TopicArn: topic.TopicArn } };
+            })
+          ]
+        }
+      ],
+      ResponseMetadata: {
+        RequestId: randomUUID()
+      }
+    }
+  };
+};
+const createTopic = (createTopicInput: CreateTopicInput) => {
+  const topicArn = `arn:aws:sns:${config.aws.region}:${config.aws.accountId}:${createTopicInput.Name}`;
+  topicList.push({
+    TopicArn: topicArn
+  });
+  return {
+    CreateTopicResponse: {
+      $: {
+        xmlns: 'http://sns.amazonaws.com/doc/2010-03-31/'
+      },
+      CreateTopicResult: [
+        {
+          TopicArn: topicArn
+        }
+      ],
+      ResponseMetadata: {
+        RequestId: randomUUID()
+      }
+    }
+  };
+};
+
 const publish = (
   topicArn: string | undefined,
   subject: string | undefined,
@@ -87,7 +144,7 @@ const publish = (
   messageStructure: string | undefined,
   messageAttributes: MessageAttributeMap | undefined,
   messageGroupId: string | undefined
-): any => {
+) => {
   const messageId = randomUUID();
   if (phoneNumber) {
     sms.push({
